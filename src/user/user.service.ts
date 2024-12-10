@@ -34,6 +34,20 @@ export class UserService {
     private refreshTokenConfig: ConfigType<typeof refreshJwtConfig>,
   ) {}
 
+  async findAll(): Promise<User[]> {
+    try {
+      return await this.userRepository.find();
+    } catch (error) {
+      throw new Error('Error fetching users');
+    }
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<User | null> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    Object.assign(user, updateUserDto);
+    return this.userRepository.save(user);
+  }
+
   async signUp(createUserDto: CreateUserDto): Promise<any> {
     const userExist = await this.userRepository.findOne({
       where: [
@@ -44,13 +58,13 @@ export class UserService {
     if (userExist) {
       throw new HttpException('user already exist', HttpStatus.CONFLICT);
     }
-
     createUserDto.password = await hash(createUserDto.password, 10);
     const user = this.userRepository.create(createUserDto);
     const saveduser = await this.userRepository.save(user);
     const { password, ...result } = saveduser;
     return { statusCode: HttpStatus.CREATED, data: result };
   }
+
   async login(
     loginDto: LoginDto,
     @Res({ passthrough: true }) response: Response,
@@ -81,7 +95,6 @@ export class UserService {
       secure: process.env.NODE_ENV === 'production', // Set to true if using https
       sameSite: 'strict',
     });
-
     return {
       id: user.id,
       accessToken,
@@ -96,7 +109,6 @@ export class UserService {
         expiresIn: this.tokenConfig.signOptions?.expiresIn, // Extract `expiresIn`
       },
     );
-
     const refreshToken = await this.jwtService.signAsync(
       {
         id: userId,
@@ -106,12 +118,12 @@ export class UserService {
         expiresIn: this.refreshTokenConfig.expiresIn, // Use correct structure
       },
     );
-
     return {
       accessToken,
       refreshToken,
     };
   }
+
   async findOne(id: string): Promise<any> {
     if (!isUUID(id)) {
       throw new BadRequestException('Invalid UUID format');
@@ -123,25 +135,12 @@ export class UserService {
     const { password, ...result } = user;
     return result;
   }
-  async findAll(): Promise<User[]> {
-    try {
-      return await this.userRepository.find();
-    } catch (error) {
-      throw new Error('Error fetching users');
-    }
-  }
-  async update(id: string, updateUserDto: UpdateUserDto): Promise<User | null> {
-    const user = await this.userRepository.findOne({ where: { id } });
 
-    Object.assign(user, updateUserDto);
-    return this.userRepository.save(user);
-  }
   async remove(id: string): Promise<boolean> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
       throw new NotFoundException(`User with ID ${id} not found`);
     }
-
     await this.userRepository.remove(user);
     return true;
   }

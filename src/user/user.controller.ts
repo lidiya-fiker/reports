@@ -23,13 +23,9 @@ import { JwtService } from '@nestjs/jwt';
 import { validate } from 'uuid';
 import { User } from './entities/user.entity';
 import { UpdateUserDto } from './dto/update-user.dto';
-import {
-  ApiBody,
-  ApiOperation,
-  ApiParam,
-  ApiResponse,
-  ApiTags,
-} from '@nestjs/swagger';
+import { ApiBody, ApiParam, ApiTags } from '@nestjs/swagger';
+import { isUUID } from 'class-validator';
+
 @ApiTags('user')
 @Controller('user')
 export class UserController {
@@ -37,6 +33,7 @@ export class UserController {
     private readonly userService: UserService,
     private readonly jwtService: JwtService,
   ) {}
+
   @Get('all')
   async findAll(): Promise<User[]> {
     try {
@@ -45,10 +42,10 @@ export class UserController {
       throw new HttpException('Error fetching users', HttpStatus.BAD_REQUEST);
     }
   }
-  
-  @Get()
-  async findOne(@Param('id') id: string) {
-    if (!validate(id)) {
+
+  @Get('/userwithid/:id')
+  async findUserById(@Param('id') id: string) {
+    if (!isUUID(id)) {
       throw new BadRequestException('Invalid uuid format');
     }
     return await this.userService.findOne(id);
@@ -79,14 +76,6 @@ export class UserController {
     const user = await this.userService.findOne(id);
     return user;
   }
-  @Post('logout')
-  async logout(@Res({ passthrough: true }) response: Response) {
-    response.clearCookie('jwt');
-    response.clearCookie('refreshToken');
-    return {
-      message: 'logged out successfully',
-    };
-  }
 
   @Post('refresh')
   async refresh(
@@ -115,6 +104,7 @@ export class UserController {
       throw new UnauthorizedException('invalid refresh token');
     }
   }
+  
   @Put(':id')
   @ApiParam({ name: 'id', description: 'UUID of the user' })
   @ApiBody({ type: UpdateUserDto })
@@ -140,5 +130,14 @@ export class UserController {
       throw new HttpException('User not found', HttpStatus.NOT_FOUND);
     }
     return { message: 'User deleted successfully' };
+  }
+
+  @Post('logout')
+  async logout(@Res({ passthrough: true }) response: Response) {
+    response.clearCookie('jwt');
+    response.clearCookie('refreshToken');
+    return {
+      message: 'logged out successfully',
+    };
   }
 }

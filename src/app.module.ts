@@ -6,7 +6,6 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { ResponseModule } from './response/response.module';
 import { AppDataSource } from 'db/data-source';
 import { SlackModule } from './slack/slack.module';
-import { SlackController } from './slack/slack.controller';
 import { SlackService } from './slack/slack.service';
 
 @Module({
@@ -17,7 +16,6 @@ import { SlackService } from './slack/slack.service';
     ResponseModule,
     SlackModule,
   ],
-  controllers: [SlackController],
   providers: [SlackService],
 })
 export class AppModule {}
