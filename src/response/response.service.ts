@@ -19,36 +19,49 @@ export class ResponseService {
     private userRepository: Repository<User>,
     private slackService: SlackService,
   ) {}
-  async create(createResponseDto: CreateResponseDto): Promise<any> {
-    const { userId, questionId, response: responseText } = createResponseDto;
 
-    const question = await this.questionRepository.findOne({
-      where: { id: questionId },
-    });
+  async create(createResponseDto: CreateResponseDto): Promise<any> {
+    const { userId, response } = createResponseDto;
+    // const question = await this.questionRepository.findOne({
+    //   where: { id: questionId },
+    // });
     const user = await this.userRepository.findOne({
       where: { id: userId },
     });
 
-    if (!question || !user) {
-      throw new Error('Invalid question or user ID.');
+    let slackMessage = `*New Response Submitted:*\n`;
+
+    for (const { questionId, response: responseText } of response) {
+      const question = await this.questionRepository.findOne({
+        where: { id: questionId },
+      });
+      if (!question) {
+        throw new Error('Invalid user ID.');
+      }
+
+      const response = this.responseRepository.create({
+        response: responseText,
+        user: user,
+        question: question,
+      });
+
+      await this.responseRepository.save(response);
+
+      slackMessage += `*Question:* ${question.question}\n*Response:* ${responseText}\n\n`;
     }
 
-    const response = this.responseRepository.create({
-      response: responseText,
-      question,
-      user,
-    });
-    await this.responseRepository.save(response);
+    slackMessage += `*By:* ${user.username}\n*Created At:* ${new Date().toLocaleString()}`;
 
-    //format and send message to slack
-    const message = `*New Response Submitted:*\n*Question:* ${question.question}\n*Response:* ${responseText}\n*By:* ${user.username}\n*Created At:* ${response.createdAt}`;
+    await this.slackService.sendMessage(
+      process.env.SLACK_CHANNEL_ID,
+      slackMessage,
+    );
 
-    await this.slackService.sendMessage(process.env.SLACK_CHANNEL_ID, message);
     return {
-      message: 'Response saved and sent to slak!',
-      response: response.response,
+      message: 'Responses saved and sent to slak!',
     };
   }
+
   async findAll(): Promise<Response[]> {
     return await this.responseRepository.find({
       relations: ['user', 'question'],

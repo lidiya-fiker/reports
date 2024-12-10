@@ -15,6 +15,7 @@ export class Response {
   id: string;
   @Column()
   response: string;
+  
   @ManyToOne(() => User, (user) => user.responses)
   user: User;
 
